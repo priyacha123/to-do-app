@@ -3,11 +3,15 @@
 {% block title %}Task Form{% endblock %}
 
 {% block content %}
-<h1>Task</h1>
-<form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Save</button>
-    <a href="{% url 'task_list' %}" class="btn btn-outline-secondary">Cancel</a>
-</form>
+<main class="auth-wrap"><section class="auth-card">
+    <div class="eyebrow">Taskflow</div>
+    <h1>Plan something good.</h1>
+    <p>Add a task, set its priority, and choose optional due-date reminders or repetition.</p>
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="primary-btn">Save task</button>
+        <a href="{% url 'task_list' %}" class="logout" style="margin-left:14px;">Cancel</a>
+    </form>
+</section></main>
 {% endblock %}

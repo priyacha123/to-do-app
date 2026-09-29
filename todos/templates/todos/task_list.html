@@ -1,65 +1,87 @@
 {% extends 'todos/base.html' %}
-{% load tz %}
+{% block title %}Dashboard · Taskflow{% endblock %}
 
 {% block content %}
-<h1>My Tasks</h1>
-<a href="{% url 'task_create' %}" class="btn btn-primary mb-3">+ Add Task</a>
+<main class="dashboard">
+    <section class="welcome">
+        <div><div class="eyebrow">{% now "l, F j" %}</div><h1>Stay on top of your work.</h1><div class="date-label">Plan your tasks, track your progress, and get things done.</div></div>
+        <a href="{% url 'task_create' %}" class="primary-btn">＋ Add task</a>
+    </section>
 
-<form method="GET" class="row g-2 mb-3">
-    <div class="col-auto">
-        <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Search tasks..." class="form-control">
-    </div>
-    <div class="col-auto">
-        <select name="category" onchange="this.form.submit()" class="form-select">
+    <section class="summary-grid">
+        <article class="summary-card main"><div class="label">Your focus</div><div class="metric">{{ pending_tasks }} open</div><div class="helper">{{ completed_tasks }} completed · keep your momentum going</div></article>
+        <article class="summary-card"><div class="label">All tasks</div><div class="metric">{{ total_tasks }}</div><div class="helper">in your list</div></article>
+        <article class="summary-card"><div class="label">Completed</div><div class="metric">{{ completed_tasks }}</div><div class="helper">nice work</div></article>
+        <article class="summary-card"><div class="label">Overdue</div><div class="metric">{{ overdue_tasks }}</div><div class="helper">needs attention</div></article>
+    </section>
+
+    {% if reminder_tasks %}
+    <div class="reminder-banner"><strong>Reminder:</strong> {{ reminder_tasks }} task{{ reminder_tasks|pluralize }} need{{ reminder_tasks|pluralize:"s," }} your attention.</div>
+    {% endif %}
+
+    <div class="content-grid">
+    <section class="panel">
+        <div class="panel-heading"><h2>My tasks</h2><span class="muted">{{ total_tasks }} total</span></div>
+        <form method="GET" class="filters">
+            <input type="text" name="q" value="{{ query|default:'' }}" placeholder="Search your tasks...">
+            <select name="category" onchange="this.form.submit()">
             <option value="">All Categories</option>
             {% for cat in categories %}
                 <option value="{{ cat.id }}" {% if request.GET.category == cat.id|stringformat:"s" %}selected{% endif %}>
                     {{ cat.name }}
                 </option>
             {% endfor %}
-        </select>
-    </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-outline-primary">Search</button>
-    </div>
-</form>
-
-<ul class="list-group">
+            </select>
+            <select name="status" onchange="this.form.submit()" aria-label="Filter by status">
+                <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+                <option value="today" {% if status == 'today' %}selected{% endif %}>Due today</option>
+                <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>Overdue</option>
+                <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+                <option value="all" {% if status == 'all' %}selected{% endif %}>All tasks</option>
+            </select>
+            <select name="sort" onchange="this.form.submit()" aria-label="Sort tasks">
+                <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest first</option>
+                <option value="due_asc" {% if sort == 'due_asc' %}selected{% endif %}>Due date: earliest</option>
+                <option value="due_desc" {% if sort == 'due_desc' %}selected{% endif %}>Due date: latest</option>
+                <option value="priority" {% if sort == 'priority' %}selected{% endif %}>Priority</option>
+            </select>
+            <button type="submit" class="filter-btn">Search</button>
+        </form>
+        <div class="task-list">
     {% for task in page_obj %}
-        <li class="list-group-item d-flex justify-content-between align-items-center {% if task.completed %}text-decoration-line-through text-muted{% endif %}">
-            <span>
-                <a href="{% url 'task_toggle' task.pk %}" class="text-decoration-none">
-                    {% if task.completed %}☑{% else %}☐{% endif %}
-                </a>
-                {{ task.title }}
-                {% if task.category %}<span class="badge bg-secondary">{{ task.category.name }}</span>{% endif %}
-                {% if task.due_date %}
-                    <small class="{% if task.is_overdue %}text-danger fw-bold{% else %}text-muted{% endif %}">(due {{ task.due_date }})</small>
-                {% endif %}
-            </span>
-            <span>
-                <a href="{% url 'task_update' task.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                <a href="{% url 'task_delete' task.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
-            </span>
-        </li>
+        <article class="task-item {% if task.completed %}done{% endif %}">
+            <div class="task-main">
+                <form method="POST" action="{% url 'task_toggle' task.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="check {% if task.completed %}checked{% endif %}" aria-label="Toggle task">{% if task.completed %}✓{% endif %}</button>
+                </form>
+                <div><div class="task-title">{{ task.title }}</div><div class="task-meta"><span class="priority priority-{{ task.priority }}">{{ task.get_priority_display }}</span>{% if task.category %}<span class="category">{{ task.category.name }}</span>{% endif %}{% if task.due_date %}<span class="due {% if task.is_overdue %}overdue{% endif %}">Due {{ task.due_date|date:"M j" }}</span>{% endif %}{% if task.recurrence != 'none' %}<span class="recurring">↻ {{ task.get_recurrence_display }}</span>{% endif %}{% if task.is_reminder_due %}<span class="reminder">Reminder due</span>{% elif task.reminder_at %}<span class="reminder">Reminder set</span>{% endif %}</div></div>
+            </div>
+            <div class="task-actions"><a href="{% url 'task_update' task.pk %}" class="icon-btn">Edit</a><a href="{% url 'task_delete' task.pk %}" class="icon-btn">Delete</a></div>
+        </article>
     {% empty %}
-        <li class="list-group-item text-muted">No tasks yet. Add one above!</li>
+        <div class="empty-state">No tasks match your search.<br><a href="{% url 'task_create' %}">Create a new task</a> to get started.</div>
     {% endfor %}
-</ul>
+        </div>
 
 {% if page_obj.has_other_pages %}
-<nav>
-    <ul class="pagination">
+<nav class="pagination">
         {% if page_obj.has_previous %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">Previous</a></li>
+            <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}&status={{ status }}&sort={{ sort }}">← Previous</a>
         {% endif %}
-
-        <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
-
+        <span class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">Next</a></li>
+            <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}&status={{ status }}&sort={{ sort }}">Next →</a>
         {% endif %}
-    </ul>
 </nav>
 {% endif %}
+    </section>
+    <aside class="panel">
+        <div class="panel-heading"><h2>Progress</h2><span class="muted">This week</span></div>
+        <div class="progress-wrap"><div class="progress-copy"><h3>Completion progress</h3><p>{{ completed_tasks }} of {{ total_tasks }} tasks completed.</p></div><div class="progress-bar"><div class="progress-fill" style="width: {{ progress }}%;"></div></div><span class="progress-value">{{ progress }}%</span></div>
+        <div class="panel-heading" style="margin-top: 26px; margin-bottom: 12px;"><h2>Your categories</h2><a class="add-category" href="{% url 'category_create' %}">＋ Add category</a></div>
+        <div class="category-list">{% for cat in categories %}<div class="category-row"><span>{{ cat.name }}</span><strong>{{ cat.task_count }}</strong></div>{% empty %}<div class="muted">Add categories to organize your flow.</div>{% endfor %}</div>
+    </aside>
+    </div>
+</main>
 {% endblock %}

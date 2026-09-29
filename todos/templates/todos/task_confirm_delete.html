@@ -3,10 +3,14 @@
 {% block title %}Delete Task{% endblock %}
 
 {% block content %}
-<h1>Delete "{{ task.title }}"?</h1>
-<form method="POST">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-danger">Yes, delete</button>
-    <a href="{% url 'task_list' %}" class="btn btn-outline-secondary">Cancel</a>
-</form>
+<main class="auth-wrap"><section class="auth-card danger-card">
+    <div class="eyebrow">One last check</div>
+    <h1>Delete this task?</h1>
+    <p>“{{ task.title }}” will be permanently removed from your list.</p>
+    <form method="POST">
+        {% csrf_token %}
+        <button type="submit" class="primary-btn" style="background:#d9535f;">Yes, delete it</button>
+        <a href="{% url 'task_list' %}" class="logout" style="margin-left:14px;">Keep it</a>
+    </form>
+</section></main>
 {% endblock %}
